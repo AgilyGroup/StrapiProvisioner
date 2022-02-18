@@ -1,5 +1,7 @@
 # Agily Strapi provisioner
 
+![Provisioner logo](https://github.com/AgilyGroup/StrapiProvisioner/blob/main/logo.png?raw=true)
+
 ## Description
 
 This project aims to fill the database of a Strapi project according to data samples specified into the project repository.

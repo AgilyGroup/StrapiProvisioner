@@ -10,9 +10,11 @@ As the data is specified into the target project repository, it can allow people
 
 This script is meant to be executed via a npm script (or npx) directly from within the target project.
 
-It then looks for a "provisioner" folder, directly located in the root folder of the project.
+It then looks for a `provisioner` folder, directly located in the root folder of the project.
 
 This folder contains subfolders for each api endpoints to use. Each of this subfolders can contains `.json` or `.js` files, containing data.
+
+Data contained in files can be JSON objects (dictionnaries) or array of JSON objects. In case of an array of objects, each object will be processed separately.
 
 For each record found in this files, it will try to create them or update them (if they are already found, see the "upserting records" section of this readme) using Strapi API.
 
@@ -36,6 +38,20 @@ optional arguments:
 If no email and/or password is provided from the command line, the provisioner will :
 - try to find `PROVISIONNING_EMAIL` and `PROVISIONNING_PASSWORD` environment variables directly from the env file of the project
 - ask for them via command prompts
+
+## Folder hierarchy example
+
+```
+/
+  provisioner/
+    user-private-messages/
+      message1.json
+      message2.json
+    restaurants/
+      restaurant-paris.json
+      restaurant-london.json
+      restaurants-italy.json
+```
 
 ## Upserting records
 

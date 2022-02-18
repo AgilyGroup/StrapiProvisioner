@@ -16,7 +16,6 @@ parser.add_argument('-e', '--email');
 parser.add_argument('-p', '--password');
 
 const initArgs = async (args) => {
-  console.log(args.email);
   if(!args.email) {
     if (process.env.PROVISIONNING_EMAIL) {
       args.email = process.env.PROVISIONNING_EMAIL;

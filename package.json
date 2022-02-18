@@ -6,6 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "bin": {
+    "StrapiProvisioner": "src/index.js"
+  },
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {

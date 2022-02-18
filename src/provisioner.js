@@ -21,21 +21,24 @@ const login = async () => {
 };
 
 const importRecord = async (record, endpoint) => {
+  const findEndpoint = record.__findEndpoint || endpoint;
+  const createEndpoint = record.__createEndpoint || endpoint;
+  const updateEndpoint = record.__updateEndpoint || endpoint;
   if (record.__upsertFilter) {
     const query = qs.stringify(record.__upsertFilter, { encodeValuesOnly: true });
 
     try {
-      const find = await axios.get(`${baseUrl}/${endpoint}?${query}`);
+      const find = await axios.get(`${baseUrl}/${findEndpoint}?${query}`);
       if (find.data.length === 0) {
-        const res = await axios.post(`${baseUrl}/${endpoint}`, record);
+        const res = await axios.post(`${baseUrl}/${createEndpoint}`, record);
       } else {
-        const res = await axios.put(`${baseUrl}/${endpoint}/${find.data[0].id}`, record);
+        const res = await axios.put(`${baseUrl}/${updateEndpoint}/${find.data[0].id}`, record);
       }
     } catch (e) {
       console.log('req error ', e.response.data);
     }
   } else {
-    const res = await axios.post(`${baseUrl}/${endpoint}`, record);
+    const res = await axios.post(`${baseUrl}/${createEndpoint}`, record);
   }
 }
 

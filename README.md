@@ -97,3 +97,18 @@ module.exports = {
 ```
 
 You can of course use the `require` directive from this file to use libraries (such as `faker`) for instance, and use environment variables present in your project.
+
+## Customizing endpoints
+
+You can also specify on each record how the API is called via the `__findEndpoint` `__createEndpoint` `__updateEndpoint` properties :
+
+```
+module.exports = {
+  __findEndpoint: 'user-permissions/roles',
+__createEndpoint: 'user-permissions/roles',
+__updateEndpoint: 'user-permissions/roles',
+  message: "new from provisionner",
+  date: new Date(),
+  randomValue: Math.random()
+};
+```

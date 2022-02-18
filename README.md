@@ -24,6 +24,10 @@ Every other record found in the database will remain as-is.
 
 ## Usage 
 
+You can execute this script directly from any Strapi project without any specific installation with the following command :
+
+```npx https://github.com/AgilyGroup/StrapiProvisioner```
+
 ```
 usage: index.js [-h] [-v] [-e EMAIL] [-p PASSWORD]
 

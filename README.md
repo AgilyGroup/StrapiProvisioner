@@ -103,12 +103,26 @@ You can of course use the `require` directive from this file to use libraries (s
 You can also specify on each record how the API is called via the `__findEndpoint` `__createEndpoint` `__updateEndpoint` properties :
 
 ```
-module.exports = {
-  __findEndpoint: 'user-permissions/roles',
-__createEndpoint: 'user-permissions/roles',
-__updateEndpoint: 'user-permissions/roles',
-  message: "new from provisionner",
-  date: new Date(),
-  randomValue: Math.random()
-};
+{
+  "__findEndpoint": "user-permissions/roles",
+  "__createEndpoint": "user-permissions/roles",
+  "__updateEndpoint": "user-permissions/roles",
+  "message": "new from provisionner",
+}
+```
+
+## In case the records are contained in a specific key of the payload when finding records
+
+You can also specify the key containing the records with `__findPayloadKey` :
+
+For instance, if using the `users-permissions/roles` endpoint to create user roles, the api will return  `{ roles: [{ ... }]}` when looking for roles. You can overcome this problem like written below :
+
+```
+{
+	"__findEndpoint": "users-permissions/roles",
+	"__findPayloadKey": "roles",
+	"__createEndpoint": "users-permissions/roles",
+	"__updateEndpoint": "users-permissions/roles",
+  "message": "new from provisionner",
+}
 ```

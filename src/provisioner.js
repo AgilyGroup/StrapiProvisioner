@@ -6,6 +6,13 @@ const baseUrl = process.env.EXTERNAL_API_URL;
 const pwd = process.env.PWD;
 let provisionning_email;
 let provisionning_password;
+let args;
+
+const log = function () {
+  if (args.verbose === '1') {
+    console.log.apply(null, arguments);
+  }
+}
 
 const login = async () => {
   try {
@@ -28,17 +35,27 @@ const importRecord = async (record, endpoint) => {
     const query = qs.stringify(record.__upsertFilter, { encodeValuesOnly: true });
 
     try {
-      const find = await axios.get(`${baseUrl}/${findEndpoint}?${query}`);
-      if (find.data.length === 0) {
-        const res = await axios.post(`${baseUrl}/${createEndpoint}`, record);
+      const findUrl = `${baseUrl}/${findEndpoint}?${query}`;
+      log('find with :', findUrl);
+      const find = await axios.get(findUrl);
+      const findResults = record.__findPayloadKey ? find.data[record.__findPayloadKey] : find.data;
+      log(findResults);
+      if (findResults.length === 0) {
+        const postUrl = `${baseUrl}/${createEndpoint}`;
+        log('post to :', postUrl);
+        const res = await axios.post(postUrl, record);
       } else {
-        const res = await axios.put(`${baseUrl}/${updateEndpoint}/${find.data[0].id}`, record);
+        const putUrl = `${baseUrl}/${updateEndpoint}/${findResults[0].id}`;
+        log('put to :', putUrl);
+        const res = await axios.put(putUrl, record);
       }
     } catch (e) {
-      console.log('req error ', e.response.data);
+      console.log('req error ', e);
     }
   } else {
-    const res = await axios.post(`${baseUrl}/${createEndpoint}`, record);
+    const postUrl = `${baseUrl}/${createEndpoint}`;
+    log('post to :', postUrl);
+    const res = await axios.post(postUrl, record);
   }
 }
 
@@ -73,7 +90,8 @@ const start = async () => {
 //start();
 
 module.exports = {
-  start(email, password) {
+  start(email, password, _args) {
+    args = _args;
     provisionning_email = email;
     provisionning_password = password;
     console.log('Starting provisioning');

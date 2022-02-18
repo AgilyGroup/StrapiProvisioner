@@ -14,6 +14,7 @@ const parser = new ArgumentParser({
 });
  
 parser.add_argument('-v', '--version', { action: 'version', version });
+parser.add_argument('-V', '--verbose');
 parser.add_argument('-e', '--email');
 parser.add_argument('-p', '--password');
 
@@ -47,7 +48,7 @@ const start = async () => {
   const args = parser.parse_args();
 
   await initArgs(args);
-  provisioner.start(args.email, args.password);
+  provisioner.start(args.email, args.password, args);
 }
 
 start();

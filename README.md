@@ -126,3 +126,24 @@ For instance, if using the `users-permissions/roles` endpoint to create user rol
   "message": "new from provisionner",
 }
 ```
+
+## Relation between records
+
+In any record, you can use the following syntax to create relations between records :
+
+```
+{
+  "lesson": {
+    "__find": {
+      "endpoint": "lessons",
+      "filter": { "name": "first lesson" }
+    }
+  },
+}
+```
+
+In every part of the record, you can add a JSON object with a `__find` or `__findAll` key. The value assigned to this key is an object as well, with an `endpoint` and a `filter` category.
+
+The object containing the `__find` keyword will then be replaced by the object representing the first record found.
+
+If the keyword used is `__findAll`, the replaced value will be an array containing all the found results.

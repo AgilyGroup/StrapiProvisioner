@@ -18,6 +18,8 @@ parser.add_argument('-V', '--verbose');
 parser.add_argument('-e', '--email');
 parser.add_argument('-u', '--url');
 parser.add_argument('-p', '--password');
+parser.add_argument('-o', '--only-endpoints');
+parser.add_argument('-d', '--delete-first');
 
 const initArgs = async (args) => {
   if(!args.email) {

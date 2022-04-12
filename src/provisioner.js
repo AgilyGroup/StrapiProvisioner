@@ -2,15 +2,33 @@ const glob = require("glob");
 const axios = require("axios");
 const qs = require('qs');
 const traverse = require('traverse');
+const chalk = require('chalk');
 
 const pwd = process.env.PWD;
 let provisionning_email;
 let provisionning_password;
 let baseUrl;
 let args;
+let config = {};
+
+let stats = {
+  recordErrors: 0,
+  recordTotal: 0,
+  relationErrors: 0,
+};
+
+/**
+ * To avoid problems with relations, import is actually done in two phases :
+ * - planify everything
+ * - actually run the import process
+ */
 
 const filesByEndpoint = {};
-
+const handleError = function (e) {
+  console.error(chalk.red('ERR'), e.toString());
+  stats.recordErrors++;
+};
+ 
 const log = function () {
   if (args.verbose === '1') {
     console.log.apply(null, arguments);
@@ -43,7 +61,6 @@ planifyImportRecord = async (record, endpoint) => {
   } else {
     await importRecord(record, endpoint);
   }
-
 };
 
 const importRecord = async (record, endpoint) => {
@@ -69,10 +86,19 @@ const importRecord = async (record, endpoint) => {
   });
   for(let url in relationsToFind) {
     const operation = relationsToFind[url];
-    relationsToFind[url] = await axios.get(url);
-    relationsToFind[url] = relationsToFind[url].data;
-    if (operation === 'find') {
-      relationsToFind[url] = relationsToFind[url][0];
+    try {
+      relationsToFind[url] = await axios.get(url);
+      relationsToFind[url] = relationsToFind[url].data;
+      if (operation === 'find') {
+        relationsToFind[url] = relationsToFind[url][0];
+      }
+    } catch (e) {
+      handleError(e);
+    }
+    if(relationsToFind[url] === undefined) {
+      console.error(chalk.red('ERROR'), url);
+      stats.relationErrors ++;
+      relationsToFind[url] = { id: null };
     }
   }
   record = traverse(record).map(function (value) {
@@ -84,6 +110,7 @@ const importRecord = async (record, endpoint) => {
     return value;
   });
   log('importrecord', record);
+  let res;
   if (record.__upsertFilter) {
     const query = qs.stringify(record.__upsertFilter, { encodeValuesOnly: true });
 
@@ -96,19 +123,39 @@ const importRecord = async (record, endpoint) => {
       if (findResults.length === 0) {
         const postUrl = `${provisionning_baseUrl}/${createEndpoint}`;
         log('post to :', postUrl);
-        const res = await axios.post(postUrl, record);
+        res = await axios.post(postUrl, record);
       } else {
         const putUrl = `${provisionning_baseUrl}/${updateEndpoint}/${findResults[0].id}`;
         log('put to :', putUrl);
-        const res = await axios.put(putUrl, record);
+        res = await axios.put(putUrl, record);
       }
     } catch (e) {
-      console.log('req error ', e);
+      handleError(e);
     }
   } else {
     const postUrl = `${provisionning_baseUrl}/${createEndpoint}`;
     log('post to :', postUrl);
-    const res = await axios.post(postUrl, record);
+    try {
+      res = await axios.post(postUrl, record);
+    } catch (e) {
+      handleError(e);
+    }
+  }
+  if (record.__locales) {
+    const locales = Object.keys(record.__locales);
+    for (let l of locales) {
+      log(`\timporting locale ${l} for object with id ${res.data.id}`);
+      console.log(res.data);
+      const postUrl = `${provisionning_baseUrl}/${updateEndpoint}/${res.data.id}/localizations`;
+      try {
+        const localeRes = await axios.post(postUrl, {
+          ...record.__locales[l],
+          locale: l,
+        });
+      } catch (e) {
+        handleError(e);
+      }
+    }
   }
 }
 
@@ -123,11 +170,56 @@ const importFile = async (f) => {
   } else {
     await planifyImportRecord(fileContent, endpoint);
   }
-  console.log('Import OK for file ', f);
+  stats.recordTotal ++;
+  console.log(chalk.green('OK'), 'Import done for file ', f);
 }
 
+const deleteEndpoint = async (endpoint) => {
+  const findUrl = `${provisionning_baseUrl}/${endpoint}`;
+  const find = await axios.get(findUrl + `?_limit=10000`);
+
+
+  for (let i = 0; i < find.data.length; i++) {
+    await axios.delete(`${provisionning_baseUrl}/${endpoint}/${find.data[i].id}`);
+  }
+};
+
+const readConfig = async () => {
+  try {
+    config = require(pwd + '/provisioner/config.js');
+    if (args.delete_first) {
+      const deleteFirst = args.delete_first.split(',')
+      for (let i = 0; i < deleteFirst.length; i++) {
+        const endpoint = deleteFirst[i];
+        deleteEndpoint(endpoint);
+      }
+    } else if (config.deleteFirst) {
+      for (let i = 0; i < config.deleteFirst.length; i++) {
+        const endpoint = config.deleteFirst[i].endpoint;
+        deleteEndpoint(endpoint);
+      }
+    }
+  } catch (e) {
+    handleError(e);
+  }
+};
+
+const importEndpoint = async (endpoint) => {
+  console.log('import endpoint', endpoint);
+  if (filesByEndpoint[endpoint] === undefined) {
+    return;
+  }
+  for (let f of filesByEndpoint[endpoint].files) {
+    await importFile(f);
+  }
+  filesByEndpoint[endpoint].importDone = true;
+  for (let cb of filesByEndpoint[endpoint].afterCallbacks) {
+    cb();
+  }
+};
+
+
 const start = async () => {
-  await login();
   glob('provisioner/**/*.json', (er, files) => {
     for(const f of files) {
       const endpoint = f.split('/')[1];
@@ -147,22 +239,30 @@ const start = async () => {
     }
   });
   setTimeout(async () => {
-    for(let endpoint in filesByEndpoint) {
-      for (let f of filesByEndpoint[endpoint].files) {
-        await importFile(f);
+    if (args.only_endpoints) {
+      const endpoints = args.only_endpoints.split(',');
+      for (let i = 0; i < endpoints.length; i++) {
+        const endpoint = endpoints[i];
+        await importEndpoint(endpoint);
       }
-      filesByEndpoint[endpoint].importDone = true;
-      for (let cb of filesByEndpoint[endpoint].afterCallbacks) {
-        cb();
+
+    } else if (config.order) {
+      for (let i = 0; i < config.order.length; i++) {
+        const endpoint = config.order[i];
+        await importEndpoint(endpoint);
+      }
+    } else {
+      for(let endpoint in filesByEndpoint) {
+        await importEndpoint(endpoint);
       }
     }
+    console.log('stats', stats);
   }, 1000);
 }
 
-//start();
 
 module.exports = {
-  start(email, password, baseUrl, _args) {
+  async start(email, password, baseUrl, _args) {
     args = _args;
     provisionning_email = email;
     provisionning_password = password;
@@ -173,6 +273,8 @@ module.exports = {
     console.log('- with strapi URL : ', baseUrl);
     console.log('------------------------------------------');
 
-    start();
+    await login();
+    await readConfig();
+    await start();
   }
 }

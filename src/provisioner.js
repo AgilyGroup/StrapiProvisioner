@@ -26,6 +26,7 @@ let stats = {
 const filesByEndpoint = {};
 const handleError = function (e) {
   console.error(chalk.red('ERR'), e.toString());
+  console.error(e);
   stats.recordErrors++;
 };
  
@@ -171,7 +172,7 @@ const importFile = async (f) => {
     await planifyImportRecord(fileContent, endpoint);
   }
   stats.recordTotal ++;
-  console.log(chalk.green('OK'), 'Import done for file ', f);
+  console.log(chalk.green('OK'), `Import done for file ${f} (${stats.recordTotal})`);
 }
 
 const deleteEndpoint = async (endpoint) => {
@@ -191,12 +192,12 @@ const readConfig = async () => {
       const deleteFirst = args.delete_first.split(',')
       for (let i = 0; i < deleteFirst.length; i++) {
         const endpoint = deleteFirst[i];
-        deleteEndpoint(endpoint);
+        await deleteEndpoint(endpoint);
       }
     } else if (config.deleteFirst) {
       for (let i = 0; i < config.deleteFirst.length; i++) {
         const endpoint = config.deleteFirst[i].endpoint;
-        deleteEndpoint(endpoint);
+        await deleteEndpoint(endpoint);
       }
     }
   } catch (e) {
@@ -207,6 +208,7 @@ const readConfig = async () => {
 const importEndpoint = async (endpoint) => {
   console.log('import endpoint', endpoint);
   if (filesByEndpoint[endpoint] === undefined) {
+    console.warn (`No files for endpoint "${endpoint}"`);
     return;
   }
   for (let f of filesByEndpoint[endpoint].files) {
@@ -229,7 +231,7 @@ const start = async () => {
       filesByEndpoint[endpoint].files.push(f);
     }
   });
-  glob('provisioner/**/*.js', async (er, files) => {
+  glob('provisioner/**/*.js', (er, files) => {
     for(const f of files) {
       const endpoint = f.split('/')[1];
       if (filesByEndpoint[endpoint] === undefined) {
